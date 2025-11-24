@@ -1,4 +1,4 @@
-package com.github.tzdel.orchestragentintellij.toolWindow
+package com.github.tzdel.orchestragentintellij.ui.toolWindow
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
