@@ -5,9 +5,12 @@ import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.PropertyKey
 
 @NonNls
-private const val BUNDLE = "messages.MyBundle"
+private const val BUNDLE = "messages.OrchestragentBundle"
 
-object MyBundle : DynamicBundle(BUNDLE) {
+/**
+ * Centralized access to localized UI strings defined in messages/OrchestragentBundle.properties.
+ */
+object OrchestragentBundle : DynamicBundle(BUNDLE) {
 
     @JvmStatic
     fun message(@PropertyKey(resourceBundle = BUNDLE) key: String, vararg params: Any) =

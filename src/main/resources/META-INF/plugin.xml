@@ -6,10 +6,10 @@
 
     <depends>com.intellij.modules.platform</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
+    <resource-bundle>messages.OrchestragentBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.tzdel.orchestragentintellij.ui.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.tzdel.orchestragentintellij.startup.MyProjectActivity" />
+        <toolWindow factoryClass="com.github.tzdel.orchestragentintellij.ui.toolWindow.OrchestragentWindowFactory" id="OrchestragentWindow"/>
+        <postStartupActivity implementation="com.github.tzdel.orchestragentintellij.startup.OrchestragentStartupActivity" />
     </extensions>
 </idea-plugin>
