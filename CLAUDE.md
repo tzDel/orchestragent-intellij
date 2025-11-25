@@ -273,7 +273,7 @@ try {
 - Use descriptive test names that clearly describe the scenario being tested
 - Every test function MUST contain explicit comment blocks: `// arrange`, `// act`, `// assert`
 - Use JUnit 5 and IntelliJ Test Framework
-- Use backtick test names and uppercase for keywords: `` `SHOULD x WHEN y AND/OR z` ``
+- Use backtick test names and uppercase for keywords: `` `<methodName> SHOULD x WHEN y AND/OR z` ``
 - Extract the most important values to variables. Always use variables for expected values.
 
 ### Unit Tests
@@ -286,18 +286,19 @@ Use `mockk` for mocking dependencies
 @ExtendWith(MockKExtension::class)
 class SomeTest {
 
-    @MockK(relaxed = true)
+    @MockK
     private lateinit var mockProperty: Property
+
+    @RelaxedMockK
+    private lateinit var mockProperty2: Property
 
     @InjectMockKs
     private lateinit var underTest: Service
 }
 
 @Test
-fun `SHOULD x WHEN y AND/OR z`() {
+fun `createSession SHOULD x WHEN y AND/OR z`() {
     // arrange
-    val mockMCPClient = mock<MCPClientService>()
-    val service = SessionManagerService(mockMCPClient)
     val sessionId = "test-session"
 
     // act
@@ -306,7 +307,7 @@ fun `SHOULD x WHEN y AND/OR z`() {
     }
 
     // assert
-    val session = service.getSessionById(sessionId)
+    val session = mockProperty2.getSessionById(sessionId)
     assertNotNull(session)
     assertEquals(sessionId, session?.sessionId)
 }
