@@ -6,3 +6,4 @@
 .qodana
 build
 /.claude/settings.local.json
+/.codex/AGENTS.md
