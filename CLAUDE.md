@@ -54,9 +54,10 @@ This is an IntelliJ IDEA plugin that provides UI and workflow management for the
 
 ```
 src/main/kotlin/com/github/tzdel/orchestragentintellij/
-├── models/                      # [MODELS LAYER] Data models and ViewModels
-│   ├── SessionViewModel.kt      # Session state representation
+├── models/                      # [MODELS LAYER] Pure domain models
+│   ├── Session.kt               # Core session domain entity
 │   ├── SessionStatus.kt         # Session status enum (OPEN, REVIEWED, MERGED)
+│   ├── GitStatistics.kt         # Git diff statistics value object
 │   └── MCPResponse.kt           # MCP protocol response models
 │
 ├── services/                    # [SERVICE LAYER] Business logic
@@ -78,6 +79,10 @@ src/main/kotlin/com/github/tzdel/orchestragentintellij/
 │       └── GitOperations.kt          # IntelliJ Git4Idea API wrappers
 │
 └── ui/                          # [UI LAYER] User interface components
+    ├── presentation/            # Presentation models (ViewModels)
+    │   ├── SessionViewModel.kt       # Session presentation model for UI
+    │   ├── SessionViewModelMapper.kt # Maps domain models to ViewModels
+    │   └── UIState.kt                # UI state management
     ├── toolWindow/              # Tool window UI components
     │   ├── SessionToolWindowFactory.kt   # Tool window registration
     │   ├── SessionListPanel.kt           # Session list UI
@@ -104,6 +109,8 @@ src/main/resources/
     └── MyBundle.properties     # Localization strings
 
 src/test/kotlin/com/github/tzdel/orchestragentintellij/
+├── models/
+│   └── SessionTest.kt
 ├── services/
 │   ├── SessionManagerServiceTest.kt
 │   └── MCPClientServiceTest.kt
@@ -111,6 +118,8 @@ src/test/kotlin/com/github/tzdel/orchestragentintellij/
 │   └── mcp/
 │       └── MCPProtocolClientTest.kt
 └── ui/
+    ├── presentation/
+    │   └── SessionViewModelMapperTest.kt
     └── toolWindow/
         └── SessionToolWindowTest.kt
 ```
@@ -119,18 +128,21 @@ src/test/kotlin/com/github/tzdel/orchestragentintellij/
 
 | Layer | Packages | Responsibilities | Dependencies |
 |-------|----------|------------------|--------------|
-| **Models Layer** | `models/` | Data models, ViewModels, business rules | None |
+| **Models Layer** | `models/` | Pure domain models, business rules, domain entities | None |
 | **Service Layer** | `services/`, `startup/`, `listeners/` | Business logic, state management, lifecycle, coordination | Models |
 | **Integration Layer** | `integration/mcp/`, `integration/git/` | External system communication (MCP, Git) | Models |
-| **UI Layer** | `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/` | User interaction, visual representation | Services, Models |
+| **UI Layer** | `ui/presentation/`, `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/` | Presentation models (ViewModels), user interaction, visual representation | Services, Models |
 
 **Dependency Flow:** UI → Services → Integration/Models
 
 **Key Points:**
+- **Models Layer** contains pure domain models (`Session`, `SessionStatus`, `GitStatistics`) with NO UI concerns
+- **ViewModels** live in `ui/presentation/` - they adapt domain models for UI display
 - `startup/` is part of the Service Layer (handles plugin lifecycle and initialization)
 - `listeners/` is part of the Service Layer (coordinates event handling)
-- `settings/` UI is separate from settings data (PluginSettings in models or services)
+- `settings/` UI is separate from settings data (PluginSettings stored via PersistentStateComponent)
 - All layers can depend on Models, but UI must go through Services for business logic
+- **Mappers** in `ui/presentation/` transform domain models → ViewModels
 
 ## External Dependencies
 
@@ -147,12 +159,35 @@ src/test/kotlin/com/github/tzdel/orchestragentintellij/
 **Flow:** User Interaction → UI Layer → Service Layer → Integration Layer → MCP Server
 
 **Key Points:**
-- **UI Layer (ui/toolWindow/, ui/actions/, ui/dialogs/, ui/settings/)** translates user actions to service calls; displays state to user
+- **Models Layer (models/)** contains pure domain models with business rules - NO UI/presentation concerns
 - **Service Layer (services/, startup/, listeners/)** manages application state, coordinates integration layer, implements business logic, handles lifecycle
 - **Integration Layer (integration/mcp/, integration/git/)** communicates with external systems (MCP server, Git, file system)
-- **Models Layer (models/)** contains pure data models with validation logic
+- **UI Layer (ui/presentation/, ui/toolWindow/, ui/actions/, ui/dialogs/, ui/settings/)**
+  - `ui/presentation/` contains ViewModels and mappers (domain → presentation)
+  - Other UI packages contain visual components that display ViewModels
 - All dependencies point toward models
 - Configuration persisted via IntelliJ's PersistentStateComponent
+
+**Domain Model vs ViewModel Separation:**
+```kotlin
+// models/Session.kt - Pure domain model
+data class Session(
+    val id: String,
+    val worktreePath: Path,
+    val branchName: String,
+    val status: SessionStatus,
+    val statistics: GitStatistics
+)
+
+// ui/presentation/SessionViewModel.kt - Presentation model
+data class SessionViewModel(
+    val displayName: String,           // Formatted for UI
+    val statusColor: Color,            // UI-specific
+    val linesChangedText: String,      // "245 additions, 18 deletions"
+    val canMerge: Boolean,             // UI state
+    val lastModifiedFormatted: String  // "2 hours ago"
+)
+```
 
 ## Key Design Decisions
 
@@ -363,7 +398,7 @@ Always write tests first, before implementing features:
 **Base Package:** `com.github.tzdel.orchestragentintellij`
 
 **Models Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/models/` - Data models and ViewModels
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/models/` - Pure domain models (Session, SessionStatus, GitStatistics)
 
 **Service Layer:**
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/services/` - Application services (state management, business logic)
@@ -375,6 +410,7 @@ Always write tests first, before implementing features:
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/integration/git/` - Git operations and integration
 
 **UI Layer:**
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/presentation/` - ViewModels and mappers (presentation models)
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/toolWindow/` - Tool window UI components
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/actions/` - User actions and handlers
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/dialogs/` - User dialogs
