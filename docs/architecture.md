@@ -29,23 +29,23 @@ This document outlines the architecture for an IntelliJ IDEA plugin that provide
 ┌────────────────────────────────────────────────────────────────┐
 │                      IntelliJ IDEA IDE                         │
 ├────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │              IntelliJ Plugin (Kotlin/Java)                │ │
-│  ├──────────────────────────────────────────────────────────┤ │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │              IntelliJ Plugin (Kotlin)                     │ │
+│  ├───────────────────────────────────────────────────────────┤ │
 │  │                                                           │ │
-│  │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │ │
-│  │  │     UI      │  │   Service    │  │  Integration   │  │ │
-│  │  │   Layer     │  │    Layer     │  │     Layer      │  │ │
-│  │  └──────┬──────┘  └──────┬───────┘  └───────┬────────┘  │ │
-│  │         │                │                   │           │ │
-│  │         └────────────────┴───────────────────┘           │ │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐    │ │
+│  │  │     UI      │  │   Service    │  │  Integration   │    │ │
+│  │  │   Layer     │  │    Layer     │  │     Layer      │    │ │
+│  │  └──────┬──────┘  └──────┬───────┘  └───────┬────────┘    │ │
+│  │         │                │                   │            │ │
+│  │         └────────────────┴───────────────────┘            │ │
 │  │                          │                                │ │
 │  └──────────────────────────┼────────────────────────────────┘ │
-└─────────────────────────────┼─────────────────────────────────┘
+└─────────────────────────────┼──────────────────────────────────┘
                               │ MCP Protocol (stdio/HTTP)
                               │
 ┌─────────────────────────────▼─────────────────────────────────┐
-│            orchestragent MCP Server (Go Binary)              │
+│            orchestragent MCP Server (Go Binary)               │
 ├───────────────────────────────────────────────────────────────┤
 │  • Worktree creation/deletion                                 │
 │  • Git branch management                                      │
@@ -61,8 +61,8 @@ This document outlines the architecture for an IntelliJ IDEA plugin that provide
 ├───────────────────────────────────────────────────────────────┤
 │  • Main branch (base)                                         │
 │  • .worktrees/session-* (isolated worktrees)                  │
-│  • orchestragent-* branches (session branches)               │
-│  • .orchestragent.db (session persistence)                   │
+│  • orchestragent-* branches (session branches)                │
+│  • .orchestragent.db (session persistence)                    │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,9 +74,10 @@ The plugin follows a layered architecture organized into the following packages:
 
 ```
 com.github.tzdel.orchestragentintellij/
-├── models/              # [MODELS LAYER] Data models and ViewModels
-│   ├── SessionViewModel.kt
-│   └── SessionStatus.kt
+├── models/              # [MODELS LAYER] Pure domain models
+│   ├── Session.kt
+│   ├── SessionStatus.kt
+│   └── GitStatistics.kt
 │
 ├── services/            # [SERVICE LAYER] Business logic
 │   ├── SessionManagerService.kt
@@ -100,6 +101,10 @@ com.github.tzdel.orchestragentintellij/
 │       └── GitOperations.kt
 │
 └── ui/                  # [UI LAYER] User interface components
+    ├── presentation/    # Presentation models (ViewModels)
+    │   ├── SessionViewModel.kt
+    │   ├── SessionViewModelMapper.kt
+    │   └── UIState.kt
     ├── toolWindow/      # Tool window UI components
     │   ├── SessionToolWindowFactory.kt
     │   ├── SessionListPanel.kt
@@ -120,33 +125,42 @@ com.github.tzdel.orchestragentintellij/
 
 | Layer | Packages | Responsibilities |
 |-------|----------|------------------|
-| **Models Layer** | `models/` | Data models, ViewModels, business rules |
+| **Models Layer** | `models/` | Pure domain models, business rules (Session, SessionStatus, GitStatistics) |
 | **Service Layer** | `services/`, `startup/`, `listeners/` | Business logic, state management, lifecycle, coordination |
 | **Integration Layer** | `integration/mcp/`, `integration/git/` | External system communication (MCP, Git) |
-| **UI Layer** | `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/` | User interaction, visual representation |
+| **UI Layer** | `ui/presentation/`, `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/` | Presentation models (ViewModels), user interaction, visual representation |
 
 **Dependency Rules:**
-- Models Layer: No dependencies
+- Models Layer: No dependencies (pure domain)
 - Service Layer: Depends on Models
 - Integration Layer: Depends on Models
 - UI Layer: Depends on Services and Models (through Services)
 
+**Domain vs Presentation Separation:**
+- `models/` contains domain entities with NO UI concerns
+- `ui/presentation/` contains ViewModels that adapt domain models for UI display
+- Mappers transform: Domain Model → ViewModel
+
 ### Architectural Layers
 
 #### 1. Models Layer
-**Responsibility:** Data models, ViewModels, business rules
+**Responsibility:** Pure domain models, business rules, domain entities
 
 **Location:** `models/`
 
 **Components:**
-- **SessionViewModel:** Session state representation
+- **Session:** Core session domain entity (id, worktreePath, branchName, status, statistics)
 - **SessionStatus:** Session status enum (OPEN, REVIEWED, MERGED)
+- **GitStatistics:** Git diff statistics value object (linesAdded, linesRemoved)
 - **MCPResponse:** MCP protocol response models
 
 **Technology:**
 - Kotlin data classes
-- No external dependencies
+- No external dependencies (not even UI libraries)
 - Pure business logic and validation
+- Domain-driven design principles
+
+**Key Rule:** NO UI concerns (colors, formatted strings, display logic)
 
 #### 2. Service Layer
 **Responsibility:** Business logic, state management, lifecycle, background operations
@@ -185,23 +199,29 @@ com.github.tzdel.orchestragentintellij/
 - JSON serialization (kotlinx.serialization)
 
 #### 4. UI Layer
-**Responsibility:** User interaction, visual representation, IDE integration
+**Responsibility:** Presentation models, user interaction, visual representation, IDE integration
 
-**Location:** `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/`
+**Location:** `ui/presentation/`, `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/`
 
 **Components:**
-- **Tool Window:** Main session management dashboard
-- **Action Handlers:** Context menu actions, toolbar buttons
+- **Presentation (ui/presentation/):**
+  - **SessionViewModel:** Presentation model with UI-specific fields (displayName, statusColor, formattedDate)
+  - **SessionViewModelMapper:** Transforms domain models to ViewModels
+  - **UIState:** UI state management (loading, error states)
+- **Tool Window (ui/toolWindow/):** Main session management dashboard
+- **Action Handlers (ui/actions/):** Context menu actions, toolbar buttons
+- **Dialogs (ui/dialogs/):** User input dialogs for session creation, merge confirmation
+- **Settings (ui/settings/):** Configuration UI for MCP server connection
 - **Diff Viewer:** Custom diff visualization integrated with IntelliJ's diff framework
-- **Notification System:** Status updates, warnings, errors
-- **Configuration UI:** Settings dialog for MCP server connection
-- **Dialogs:** User input dialogs for session creation, merge confirmation
 
 **Technology:**
 - Kotlin (primary language)
 - IntelliJ Platform SDK
 - Swing/JPanel for custom UI components
 - IntelliJ UI DSL for declarative UI
+- Kotlin Flow for reactive UI updates
+
+**Key Pattern:** ViewModels adapt domain models for display (formatting, colors, computed properties)
 
 ---
 
@@ -352,13 +372,13 @@ User Action: "Delete Session"
 ### Session State Synchronization
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   IntelliJ Plugin State                     │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │     SessionManagerService (In-Memory Cache)          │  │
-│  │  • Map<SessionID, SessionViewModel>                  │  │
-│  │  • Reactive StateFlow for UI updates                 │  │
-│  └───────────────────┬──────────────────────────────────┘  │
+┌──────────────────────────────────────────────────────────────┐
+│                   IntelliJ Plugin State                      │
+│  ┌──────────────────────────────────────────────────────┐    │
+│  │     SessionManagerService (In-Memory Cache)          │    │
+│  │  • Map<SessionID, SessionViewModel>                  │    │
+│  │  • Reactive StateFlow for UI updates                 │    │
+│  └───────────────────┬──────────────────────────────────┘    │
 └────────────────────────┼─────────────────────────────────────┘
                          │
                          │ MCP get_sessions() [on demand]
@@ -378,26 +398,81 @@ User Action: "Delete Session"
 
 ### Data Models
 
+**Domain Models (models/)** - Pure business entities:
+
 ```kotlin
 package com.github.tzdel.orchestragentintellij.models
 
+import java.nio.file.Path
 import java.time.Instant
 
-// Plugin-side session representation
-data class SessionViewModel(
-    val sessionId: String,
-    val worktreePath: String,
+// Pure domain model - no UI concerns
+data class Session(
+    val id: String,
+    val worktreePath: Path,
     val branchName: String,
     val status: SessionStatus,
+    val statistics: GitStatistics,
+    val createdAt: Instant,
+    val lastModified: Instant
+)
+
+data class GitStatistics(
     val linesAdded: Int,
     val linesRemoved: Int,
-    val lastModified: Instant
+    val filesChanged: Int
 )
 
 enum class SessionStatus {
     OPEN,      // Active session, worktree exists
     REVIEWED,  // Changes reviewed, ready to merge
     MERGED     // Session merged to main
+}
+```
+
+**Presentation Models (ui/presentation/)** - Adapted for UI display:
+
+```kotlin
+package com.github.tzdel.orchestragentintellij.ui.presentation
+
+import java.awt.Color
+
+// ViewModel for UI - includes display-specific fields
+data class SessionViewModel(
+    val id: String,
+    val displayName: String,              // Formatted session name
+    val worktreePath: String,             // String representation for display
+    val branchName: String,
+    val statusText: String,               // "Open", "Reviewed", "Merged"
+    val statusColor: Color,               // UI color based on status
+    val linesChangedText: String,         // "+245 -18"
+    val filesChangedText: String,         // "12 files"
+    val lastModifiedFormatted: String,    // "2 hours ago"
+    val canMerge: Boolean,                // UI state: can show merge button
+    val canDelete: Boolean                // UI state: can show delete button
+)
+
+// Mapper: Domain → ViewModel
+object SessionViewModelMapper {
+    fun toViewModel(session: Session): SessionViewModel {
+        return SessionViewModel(
+            id = session.id,
+            displayName = session.id.replace("-", " ").capitalize(),
+            worktreePath = session.worktreePath.toString(),
+            branchName = session.branchName,
+            statusText = session.status.name.toLowerCase().capitalize(),
+            statusColor = when(session.status) {
+                SessionStatus.OPEN -> Color.BLUE
+                SessionStatus.REVIEWED -> Color.GREEN
+                SessionStatus.MERGED -> Color.GRAY
+            },
+            linesChangedText = "+${session.statistics.linesAdded} -${session.statistics.linesRemoved}",
+            filesChangedText = "${session.statistics.filesChanged} files",
+            lastModifiedFormatted = formatRelativeTime(session.lastModified),
+            canMerge = session.status == SessionStatus.REVIEWED,
+            canDelete = session.status != SessionStatus.MERGED
+        )
+    }
 }
 ```
 
@@ -409,32 +484,32 @@ enum class SessionStatus {
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  orchestragent Sessions                    [+] [⟳] [⚙]   │
+│  orchestragent Sessions                    [+] [⟳] [⚙]    │
 ├────────────────────────────────────────────────────────────┤
 │  Sessions (3)                                              │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │ ● copilot-feature-auth          +245 -18    [View]   │ │
-│  │   orchestragent-copilot-feature-auth                │ │
-│  │   .worktrees/session-copilot-feature-auth            │ │
-│  ├──────────────────────────────────────────────────────┤ │
-│  │ ● claude-refactor-db            +89 -42     [View]   │ │
-│  │   orchestragent-claude-refactor-db                  │ │
-│  │   .worktrees/session-claude-refactor-db              │ │
-│  ├──────────────────────────────────────────────────────┤ │
-│  │ ● gemini-docs-update            +12 -3      [View]   │ │
-│  │   orchestragent-gemini-docs-update                  │ │
-│  │   .worktrees/session-gemini-docs-update              │ │
-│  └──────────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │ ● copilot-feature-auth          +245 -18    [View]   │  │
+│  │   orchestragent-copilot-feature-auth                 │  │
+│  │   .worktrees/session-copilot-feature-auth            │  │
+│  ├──────────────────────────────────────────────────────┤  │
+│  │ ● claude-refactor-db            +89 -42     [View]   │  │
+│  │   orchestragent-claude-refactor-db                   │  │ 
+│  │   .worktrees/session-claude-refactor-db              │  │
+│  ├──────────────────────────────────────────────────────┤  │
+│  │ ● gemini-docs-update            +12 -3      [View]   │  │
+│  │   orchestragent-gemini-docs-update                   │  │ 
+│  │   .worktrees/session-gemini-docs-update              │  │
+│  └──────────────────────────────────────────────────────┘  │
 ├────────────────────────────────────────────────────────────┤
 │  Details: copilot-feature-auth                             │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │  Status: Open                                         │ │
-│  │  Branch: orchestragent-copilot-feature-auth         │ │
-│  │  Path: .worktrees/session-copilot-feature-auth       │ │
-│  │  Changes: +245 insertions, -18 deletions             │ │
-│  │                                                       │ │
-│  │  [View Diff] [Open in New Window] [Merge] [Delete]   │ │
-│  └──────────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Status: Open                                        │  │
+│  │  Branch: orchestragent-copilot-feature-auth          │  │
+│  │  Path: .worktrees/session-copilot-feature-auth       │  │
+│  │  Changes: +245 insertions, -18 deletions             │  │
+│  │                                                      │  │
+│  │  [View Diff] [Open in New Window] [Merge] [Delete]   │  │
+│  └──────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -476,27 +551,27 @@ enum class SessionStatus {
 Settings → Tools → orchestragent
 ┌────────────────────────────────────────────────────────────┐
 │  MCP Server Configuration                                  │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │  Binary Path: [/usr/local/bin/orchestragent] [...]  │ │
-│  │  Repository:  [/path/to/repo]                 [...]  │ │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Binary Path: [/usr/local/bin/orchestragent] [...]   │  │
+│  │  Repository:  [/path/to/repo]                 [...]  │  │
 │  │  Auto-start:  ☑ Start MCP server automatically       │ │
-│  │  Refresh:     [30] seconds                           │ │
-│  └──────────────────────────────────────────────────────┘ │
+│  │  Refresh:     [30] seconds                           │  │
+│  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  Git Configuration                                         │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │  Base Branch: [main]                                  │ │
-│  │  Test Cmd:    [make test]                            │ │
-│  └──────────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Base Branch: [main]                                 │  │
+│  │  Test Cmd:    [make test]                            │  │
+│  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  UI Preferences                                            │
-│  ┌──────────────────────────────────────────────────────┐ │
+│  ┌──────────────────────────────────────────────────────┐  │
 │  │  ☑ Show line counts in session list                  │ │
 │  │  ☑ Auto-refresh session list                         │ │
 │  │  ☑ Confirm before deleting sessions                  │ │
-│  └──────────────────────────────────────────────────────┘ │
+│  └──────────────────────────────────────────────────────┘  │
 │                                                            │
-│  [Test Connection]                    [Apply] [Cancel]    │
+│  [Test Connection]                    [Apply] [Cancel]     │
 └────────────────────────────────────────────────────────────┘
 ```
 
