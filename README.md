@@ -3,6 +3,7 @@
 ![Build](https://github.com/tzDel/orchestragent-intellij/workflows/Build/badge.svg)
 [![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
+![Project Logo](assets/readme_banner.png)
 
 <!-- Plugin description -->
 
