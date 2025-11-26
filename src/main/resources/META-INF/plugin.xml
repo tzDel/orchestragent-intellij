@@ -11,6 +11,9 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow factoryClass="com.github.tzdel.orchestragentintellij.ui.toolWindow.OrchestragentWindowFactory" id="OrchestragentWindow"/>
         <postStartupActivity implementation="com.github.tzdel.orchestragentintellij.startup.StartupActivity" />
-        <notificationGroup id="orchestragent" displayType="BALLOON" />
+        <notificationGroup id="orchestragent"
+                          displayType="BALLOON"
+                          bundle="messages.OrchestragentBundle"
+                          key="notification.group.orchestragent" />
     </extensions>
 </idea-plugin>
