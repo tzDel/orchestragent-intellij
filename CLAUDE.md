@@ -15,9 +15,11 @@ This is an IntelliJ IDEA plugin that provides UI and workflow management for the
 ### Core Concepts
 
 1. **Session Management Dashboard**: Visual tool window for managing agent sessions within IDE
-2. **MCP Client Integration**: Communicates with orchestragent MCP server via JSON-RPC 2.0
+2. **MCP Client Integration**: Communicates with orchestragent MCP server via JSON-RPC 2.0 over stdio
 3. **Diff Visualization**: Real-time diff display using IntelliJ's native Git4Idea APIs
 4. **Merge Workflows**: Approve and merge agent changes with conflict resolution support
+
+**Key Metaphor:** Each session is a parallel workspace where an AI agent can work independently in its own git worktree with a dedicated branch.
 
 ---
 
@@ -49,7 +51,56 @@ This is an IntelliJ IDEA plugin that provides UI and workflow management for the
 
 # 2) Repository architecture summary
 
+## Architecture Overview
 
+**Component Flow:**
+```
+IntelliJ Plugin (Actions/ToolWindow → Services → Infrastructure → Domain)
+       ↓
+MCP Protocol (JSON-RPC over stdio)
+       ↓
+orchestragent MCP Server (Worktree/branch management, session lifecycle)
+```
+
+**Package Organization:** Feature-focused, top-level structure following IntelliJ conventions
+
+```
+com.github.tzdel.orchestragentintellij/
+├── actions/           # IDE actions (create, merge, delete, refresh) - top-level
+├── toolwindow/        # Tool window factory and panels - top-level
+├── listeners/         # Event listeners (file system changes) - top-level
+├── services/          # Business logic and state management
+├── startup/           # Plugin lifecycle management
+├── ui/
+│   ├── dialogs/       # User dialogs (create session, merge confirmation)
+│   ├── components/    # Reusable UI components
+│   └── settings/      # Settings configuration UI
+├── domain/
+│   ├── model/         # Domain entities (Session, GitStatistics, SessionStatus)
+│   └── presentation/  # ViewModels for UI display
+└── infrastructure/
+    ├── mcp/           # MCP protocol client
+    └── git/           # Git operations via Git4Idea APIs
+```
+
+**Architectural Layers:**
+
+| Layer | Packages | Responsibilities | Dependencies |
+|-------|----------|------------------|--------------|
+| **Domain** | `domain/model/`, `domain/presentation/` | Pure domain models, ViewModels | None (zero external dependencies) |
+| **Services** | `services/`, `startup/`, `listeners/` | Business logic, state management, lifecycle | Domain only |
+| **Infrastructure** | `infrastructure/mcp/`, `infrastructure/git/` | External system communication | Domain only |
+| **UI** | `actions/`, `toolwindow/`, `ui/dialogs/`, `ui/components/`, `ui/settings/` | User interaction, visual components | Services + Domain |
+
+**Dependency Flow:** Actions/ToolWindow → Services → Infrastructure → Domain (all dependencies point toward domain)
+
+**Key Principles:**
+- Clean architecture with unidirectional dependencies
+- Domain layer has zero external dependencies (pure Kotlin - testable without IntelliJ Platform)
+- 70-90% pure Kotlin unit tests, 10-30% IntelliJ platform tests (BasePlatformTestCase)
+- Feature-focused organization (actions, toolwindows, services, listeners at top-level)
+
+*For complete package structure, layer details, data models, and technical specifications, see [docs/architecture.md](docs/architecture.md)*
 
 ## External Dependencies
 
@@ -226,39 +277,14 @@ Always write tests first, before implementing features:
 
 ## Key Reference Files
 
-- **Plugin architecture:** `docs/architecture.md`
-- **orchestragent MCP server:** See orchestragent repository
-- **Implementation plans:** `docs/plans/`
+**Before implementing features, review these documents:**
 
-## Project Structure Overview
-
-**Base Package:** `com.github.tzdel.orchestragentintellij`
-
-**Top-Level Packages (IntelliJ Conventions - Feature-Focused):**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/actions/` - IDE actions (create, merge, delete, refresh sessions)
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/toolwindow/` - Tool window factory and panels
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/listeners/` - Event listeners (file system changes)
-
-**Domain Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/domain/model/` - Pure domain models (Session, SessionStatus, GitStatistics)
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/domain/presentation/` - ViewModels and mappers (presentation models)
-
-**Services Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/services/` - Application services (state management, business logic)
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/startup/` - Plugin lifecycle and initialization
-
-**Infrastructure Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/infrastructure/mcp/` - MCP protocol integration
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/infrastructure/git/` - Git operations and integration
-
-**UI Components:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/dialogs/` - User dialogs (create session, merge confirmation)
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/components/` - Reusable UI components
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/settings/` - Settings UI (plugin configuration)
-
-**Resources & Tests:**
-- `src/main/resources/META-INF/` - Plugin manifest and resources
-- `src/test/kotlin/com/github/tzdel/orchestragentintellij/` - Unit and integration tests (70-90% pure Kotlin, 10-30% platform tests)
+- **[docs/plans/concept.md](docs/plans/concept.md)** - High-level concept overview and design summary
+- **[docs/architecture.md](docs/architecture.md)** - Complete architectural design, package structure, technical specifications
+- **[docs/plans/workflows.md](docs/plans/workflows.md)** - Detailed workflow specifications with flow diagrams (5 core workflows)
+- **[docs/plans/ui.md](docs/plans/ui.md)** - UI/UX specifications, tool window layout, actions, notifications
+- **[docs/intellij_plugin_development/general_best_practices.md](docs/intellij_plugin_development/general_best_practices.md)** - IntelliJ plugin conventions and best practices
+- **[docs/intellij_plugin_development/testing_best_practices.md](docs/intellij_plugin_development/testing_best_practices.md)** - Testing strategy and patterns
 
 ## IntelliJ Platform API Reference
 
