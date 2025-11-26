@@ -119,12 +119,12 @@ Establish Connection → Fetch Sessions → Register Tool Window
    - Monitor process health
    - Handle process termination/cleanup
    - Provide stdout/stderr streams
-2. Implement `MCPProtocolClient`:
+2. Implement `MCPClient`:
    - JSON-RPC 2.0 message encoding/decoding (kotlinx.serialization)
    - Send/receive over stdin/stdout
    - Handle `get_sessions()` MCP call
    - Parse MCP response models
-3. Implement `MCPClientService`:
+3. Implement `MCPService`:
    - Coordinate ProcessManager and MCPProtocolClient
    - High-level methods: `startServer()`, `stopServer()`, `getSessions()`
    - Connection lifecycle management
