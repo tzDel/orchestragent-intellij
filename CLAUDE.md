@@ -23,6 +23,7 @@ This is an IntelliJ IDEA plugin that provides UI and workflow management for the
 
 # 1) Guardrails and behavioral guidelines
 
+- **Reference guide:** Follow `docs/intellij_plugin_development/general_best_practices.md` for IntelliJ plugin conventions specific to this repo
 - **Test before commit:** Always run `./gradlew test` before committing changes; all tests must pass
 - **Strict layer boundaries:** UI layer depends on Service layer; Service layer depends only on domain models; Integration layer implements communication protocols
 - **Test coverage:** All new features require tests; follow TDD (Red-Green-Refactor) cycle
@@ -269,49 +270,13 @@ try {
 ## Testing Patterns
 
 **Key Rules:**
+- Read and apply `docs/intellij_plugin_development/testing_best_practices.md` for IntelliJ test framework guidance in this repo
 - Use descriptive companion object constants if namespace is needed otherwise use top level constants
 - Use descriptive test names that clearly describe the scenario being tested
 - Every test function MUST contain explicit comment blocks: `// arrange`, `// act`, `// assert`
 - Use JUnit 5 and IntelliJ Test Framework
 - Use backtick test names and uppercase for keywords: `` `<methodName> SHOULD x WHEN y AND/OR z` ``
 - Extract the most important values to variables. Always use variables for expected values.
-
-### Unit Tests
-
-Use `mockk` for mocking dependencies
-- If tests need to be adapted and the mocking dependency is mockito-kotlin, first convert the test to use mockk, run the tests afterward. Once all test succeed, perform the adaption/extension.
-- Use `@ExtendWith(MockKExtension::class)`, `@MockK`, and `@InjectMockKs` instead of explicitly setting up the mocks by using mockK() function.
-
-```kotlin
-@ExtendWith(MockKExtension::class)
-class SomeTest {
-
-    @MockK
-    private lateinit var mockProperty: Property
-
-    @RelaxedMockK
-    private lateinit var mockProperty2: Property
-
-    @InjectMockKs
-    private lateinit var underTest: Service
-}
-
-@Test
-fun `createSession SHOULD x WHEN y AND/OR z`() {
-    // arrange
-    val sessionId = "test-session"
-
-    // act
-    runBlocking {
-        service.createSession(sessionId)
-    }
-
-    // assert
-    val session = mockProperty2.getSessionById(sessionId)
-    assertNotNull(session)
-    assertEquals(sessionId, session?.sessionId)
-}
-```
 
 ### TDD Workflow (MANDATORY)
 
