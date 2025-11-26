@@ -1,4 +1,4 @@
-# Core Workflows
+﻿# Core Workflows
 
 ### 1. Plugin Initialization
 
@@ -100,4 +100,28 @@ User Action: "Delete Session"
     ├─→ SessionManagerService: Remove from local cache
     │
     └─→ UI: Refresh session list, show notification
+```
+
+### 6. User Settings Workflow
+User Action: Settings/Preferences > Tools > Orchestragent
+    |
+    +-- UI: Load current ConfigurationService state into form
+    |   +-- Prefill MCP binary path (auto-discover if empty)
+    |   +-- Prefill repository path (current project default)
+    |   +-- Prefill auto-start + refresh interval
+    |
+    +-- User edits fields and clicks "Test Connection"
+    |   +-- ConfigurationService: validate paths (exists, executable)
+    |   +-- MCPClientService: attempt handshake with binary
+    |   +-- UI: Inline validation (success/failure + error message)
+    |
+    +-- User clicks Apply/OK
+    |   +-- ConfigurationService: persist via PersistentStateComponent
+    |   +-- MCPProcessManager: restart MCP server if auto-start enabled
+    |   +-- Message bus: publish "settings-changed" to toolwindow/session services
+    |
+    +-- On next IDE start
+        +-- ConfigurationService reloads saved state
+        +-- Plugin startup uses configured binary/repo/interval
+        +-- If auto-start: start MCP server with stored paths
 ```
