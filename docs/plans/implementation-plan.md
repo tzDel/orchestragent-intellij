@@ -1,6 +1,6 @@
-# Implementation Plan - Plugin Initialization Workflow
+﻿# Implementation Plan - Plugin Initialization Workflow
 
-**Reference:** [workflows.md](workflows.md) - Workflow #1: Plugin Initialization
+**Reference:** [workflows.md](../workflows.md) - Workflow #1: Plugin Initialization
 **Architecture:** [../architecture.md](../architecture.md)
 
 ---
@@ -22,8 +22,8 @@ Implement the plugin initialization workflow that starts when the IDE launches. 
 ## Workflow Summary
 
 ```
-IDE Startup → Load Plugin → Check MCP Binary → Start Server →
-Establish Connection → Fetch Sessions → Register Tool Window
+IDE Startup â†’ Load Plugin â†’ Check MCP Binary â†’ Start Server â†’
+Establish Connection â†’ Fetch Sessions â†’ Register Tool Window
 ```
 
 ---
@@ -45,7 +45,7 @@ Establish Connection → Fetch Sessions → Register Tool Window
 
 ### Infrastructure Layer
 - `infrastructure/mcp/ProcessManager.kt` - Spawn and monitor MCP server process (Deliverable 3)
-- `infrastructure/mcp/MCPProtocolClient.kt` - JSON-RPC 2.0 client (Deliverable 3)
+- `infrastructure/mcp/MCPClientFactory.kt` - Kotlin MCP SDK wiring (Deliverable 3)
 
 ### UI Layer
 - `toolwindow/SessionToolWindowFactory.kt` - Tool window registration (Deliverable 6)
@@ -74,10 +74,10 @@ Establish Connection → Fetch Sessions → Register Tool Window
 - `services/ConfigurationServiceTest.kt` - Verify default values returned
 
 **Success Criteria:**
-- ✅ ConfigurationService returns hardcoded defaults
-- ✅ Binary path assumes `orchestragent` in system PATH
-- ✅ No UI configuration needed
-- ✅ Simple implementation to unblock other deliverables
+- âœ… ConfigurationService returns hardcoded defaults
+- âœ… Binary path assumes `orchestragent` in system PATH
+- âœ… No UI configuration needed
+- âœ… Simple implementation to unblock other deliverables
 
 **Note:** Settings UI can be added later as an enhancement.
 
@@ -100,44 +100,46 @@ Establish Connection → Fetch Sessions → Register Tool Window
 - `services/NotificationServiceTest.kt` - Verify notification methods
 
 **Success Criteria:**
-- ✅ Can display success/warning/error notifications
-- ✅ Notifications appear in IDE notification area
+- âœ… Can display success/warning/error notifications
+- âœ… Notifications appear in IDE notification area
 
 ---
 
 ### Deliverable 3: Plugin Establishes MCP Connection
-**Goal:** Plugin spawns MCP server and communicates via JSON-RPC
+**Goal:** Plugin spawns MCP server and communicates via Kotlin MCP SDK (no custom JSON-RPC client)
 
 **Components:**
 - `infrastructure/mcp/ProcessManager.kt` - Spawn/monitor MCP server process
-- `infrastructure/mcp/MCPProtocolClient.kt` - JSON-RPC 2.0 client
-- `services/MCPClientService.kt` - MCP protocol coordinator
+- `infrastructure/mcp/MCPClientFactory.kt` - Creates MCP SDK client bound to spawned process
+- `services/MCPClientService.kt` - MCP protocol coordinator using SDK
 
 **Implementation:**
-1. Implement `ProcessManager`:
+1. Add Kotlin MCP SDK dependency (Gradle):
+   - Use official `mcp-client` artifact
+   - Keep version in Gradle libs catalog for easy upgrade
+2. Implement `ProcessManager`:
    - Spawn MCP server as child process (stdio transport)
    - Monitor process health
    - Handle process termination/cleanup
    - Provide stdout/stderr streams
-2. Implement `MCPClient`:
-   - JSON-RPC 2.0 message encoding/decoding (kotlinx.serialization)
-   - Send/receive over stdin/stdout
-   - Handle `get_sessions()` MCP call
-   - Parse MCP response models
-3. Implement `MCPService`:
-   - Coordinate ProcessManager and MCPProtocolClient
+3. Implement `MCPClientFactory`:
+   - Wrap SDK initialization (transport wiring to ProcessManager stdio)
+   - Configure SDK logging/timeouts
+   - Expose typed client interface for MCP calls (e.g., `get_sessions`)
+4. Implement `MCPClientService`:
+   - Coordinate ProcessManager and MCP SDK client
    - High-level methods: `startServer()`, `stopServer()`, `getSessions()`
-   - Connection lifecycle management
+   - Connection lifecycle management (startup, reconnect, shutdown)
 
 **Tests:**
 - `infrastructure/mcp/ProcessManagerTest.kt` - Process spawn/termination
-- `infrastructure/mcp/MCPProtocolClientTest.kt` - JSON-RPC encoding/decoding
-- `services/MCPClientServiceTest.kt` - Connection lifecycle
+- `infrastructure/mcp/MCPClientFactoryTest.kt` - SDK client bootstrap against mocked transport
+- `services/MCPClientServiceTest.kt` - Connection lifecycle using SDK
 
 **Success Criteria:**
 - ✅ MCP server process spawns successfully
-- ✅ JSON-RPC messages sent and received
-- ✅ `get_sessions()` call returns parsed session list
+- ✅ Kotlin MCP SDK client initialized over stdio
+- ✅ `get_sessions()` call returns parsed session list via SDK models
 - ✅ Server process terminates cleanly on plugin unload
 
 ---
@@ -192,7 +194,7 @@ Establish Connection → Fetch Sessions → Register Tool Window
 2. Create `SessionViewModel` (UI-friendly representation):
    - displayName, statusText, statusColor, linesChangedText, canMerge, canDelete, etc.
 3. Implement `SessionViewModelMapper`:
-   - Transform `Session` (domain) → `SessionViewModel` (presentation)
+   - Transform `Session` (domain) â†’ `SessionViewModel` (presentation)
    - Format timestamps, line counts, status colors
 4. Implement `SessionManagerService`:
    - In-memory cache: `StateFlow<List<SessionViewModel>>`
@@ -246,11 +248,11 @@ Establish Connection → Fetch Sessions → Register Tool Window
 - Integration test: Full startup flow
 
 **Success Criteria:**
-- ✅ Tool window appears in IDE sidebar
-- ✅ Displays connection status during startup
-- ✅ Shows session count or error message
-- ✅ IDE startup not blocked (<500ms impact)
-- ✅ Background initialization runs async
+- âœ… Tool window appears in IDE sidebar
+- âœ… Displays connection status during startup
+- âœ… Shows session count or error message
+- âœ… IDE startup not blocked (<500ms impact)
+- âœ… Background initialization runs async
 
 ---
 
