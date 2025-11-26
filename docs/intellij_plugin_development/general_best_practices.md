@@ -13,3 +13,65 @@
 - Testing: Prefer `LightPlatformTestCase` for fast platform tests, `BasePlatformTestCase` when real project/VFS is needed; isolate test data under `src/test/testData`; avoid hitting network/filesystem outside the sandbox; add integration tests for actions/services/startup paths.
 - Compatibility: Declare correct `since/until` build; test on supported IDEs; avoid using non-stable APIs without guards; follow plugin verifier guidance.
 - Publishing & security: Keep dependencies minimal; avoid bundling large/unused libs; sign plugins if required; don’t access external network/resources without user consent; handle failures gracefully.
+
+## Recommended IntelliJ Plugin Architecture & Package Structure
+
+```
+com.example.myplugin
+│
+├── actions/
+│   ├── MyAction.kt
+│   └── ...
+│
+├── toolwindow/
+│   ├── MyToolWindowFactory.kt
+│   ├── MyToolWindowContent.kt
+│   └── ...
+│
+├── services/
+│   ├── MyProjectService.kt
+│   ├── MyApplicationService.kt
+│   └── ...
+│
+├── listeners/
+│   ├── ProjectOpenListener.kt
+│   ├── FileEditorListener.kt
+│   └── ...
+│
+├── editors/ (optional)
+│   ├── Highlighters/
+│   ├── Annotators/
+│   ├── Intentions/
+│   ├── Refactorings/
+│   └── ...
+│
+├── psi/ (only if custom language or code manipulation)
+│   ├── parser/
+│   ├── resolver/
+│   ├── references/
+│   ├── icons/
+│   └── ...
+│
+├── ui/
+│   ├── components/
+│   ├── dialogs/
+│   ├── panels/
+│   └── toolbar/
+│
+├── domain/
+│   ├── model/
+│   ├── logic/
+│   ├── validator/
+│   └── repository/
+│
+├── infrastructure/
+│   ├── filestore/
+│   ├── http/
+│   ├── persistence/
+│   └── ...
+│
+└── util/
+├── FileUtils.kt
+├── KotlinExtensions.kt
+└── Logger.kt
+```

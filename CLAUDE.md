@@ -49,101 +49,7 @@ This is an IntelliJ IDEA plugin that provides UI and workflow management for the
 
 # 2) Repository architecture summary
 
-## Package/Directory Structure
 
-**Base Package:** `com.github.tzdel.orchestragentintellij`
-
-```
-src/main/kotlin/com/github/tzdel/orchestragentintellij/
-├── models/                      # [MODELS LAYER] Pure domain models
-│   ├── Session.kt               # Core session domain entity
-│   ├── SessionStatus.kt         # Session status enum (OPEN, REVIEWED, MERGED)
-│   ├── GitStatistics.kt         # Git diff statistics value object
-│   └── MCPResponse.kt           # MCP protocol response models
-│
-├── services/                    # [SERVICE LAYER] Business logic
-│   ├── SessionManagerService.kt      # Session state cache and CRUD
-│   ├── MCPClientService.kt           # MCP protocol communication
-│   ├── DiffService.kt                # Git diff parsing and statistics
-│   ├── NotificationService.kt        # User notifications
-│   └── ConfigurationService.kt       # Plugin settings persistence
-│
-├── startup/                     # [SERVICE LAYER] Plugin lifecycle management
-│   └── PluginStartupActivity.kt      # Plugin initialization and startup tasks
-│
-├── integration/                 # [INTEGRATION LAYER] External system communication
-│   ├── mcp/                     # MCP protocol integration
-│   │   ├── MCPProtocolClient.kt      # JSON-RPC 2.0 over stdio/HTTP
-│   │   └── ProcessManager.kt         # Spawn and monitor MCP server
-│   └── git/                     # Git operations and integration
-│       ├── GitDiffProvider.kt        # Diff parsing and statistics
-│       └── GitOperations.kt          # IntelliJ Git4Idea API wrappers
-│
-└── ui/                          # [UI LAYER] User interface components
-    ├── presentation/            # Presentation models (ViewModels)
-    │   ├── SessionViewModel.kt       # Session presentation model for UI
-    │   ├── SessionViewModelMapper.kt # Maps domain models to ViewModels
-    │   └── UIState.kt                # UI state management
-    ├── toolWindow/              # Tool window UI components
-    │   ├── SessionToolWindowFactory.kt   # Tool window registration
-    │   ├── SessionListPanel.kt           # Session list UI
-    │   └── SessionDetailsPanel.kt        # Session detail view
-    ├── actions/                 # User actions and handlers
-    │   ├── CreateSessionAction.kt        # New session action
-    │   ├── MergeSessionAction.kt         # Merge action
-    │   └── DeleteSessionAction.kt        # Delete session action
-    ├── dialogs/                 # User dialogs
-    │   ├── CreateSessionDialog.kt        # Session creation dialog
-    │   └── MergeConfirmationDialog.kt    # Merge approval dialog
-    └── settings/                # Settings UI
-        └── PluginSettingsConfigurable.kt # Settings configuration UI
-
-src/main/kotlin/com/github/tzdel/orchestragentintellij/
-├── listeners/                   # [SERVICE LAYER] Event listeners
-│   └── FileSystemListener.kt         # File system change detection
-└── MyBundle.kt                  # Resource bundle for i18n
-
-src/main/resources/
-├── META-INF/
-│   └── plugin.xml              # Plugin manifest
-└── messages/
-    └── MyBundle.properties     # Localization strings
-
-src/test/kotlin/com/github/tzdel/orchestragentintellij/
-├── models/
-│   └── SessionTest.kt
-├── services/
-│   ├── SessionManagerServiceTest.kt
-│   └── MCPClientServiceTest.kt
-├── integration/
-│   └── mcp/
-│       └── MCPProtocolClientTest.kt
-└── ui/
-    ├── presentation/
-    │   └── SessionViewModelMapperTest.kt
-    └── toolWindow/
-        └── SessionToolWindowTest.kt
-```
-
-**Architectural Layers** (strictly enforced):
-
-| Layer | Packages | Responsibilities | Dependencies |
-|-------|----------|------------------|--------------|
-| **Models Layer** | `models/` | Pure domain models, business rules, domain entities | None |
-| **Service Layer** | `services/`, `startup/`, `listeners/` | Business logic, state management, lifecycle, coordination | Models |
-| **Integration Layer** | `integration/mcp/`, `integration/git/` | External system communication (MCP, Git) | Models |
-| **UI Layer** | `ui/presentation/`, `ui/toolWindow/`, `ui/actions/`, `ui/dialogs/`, `ui/settings/` | Presentation models (ViewModels), user interaction, visual representation | Services, Models |
-
-**Dependency Flow:** UI → Services → Integration/Models
-
-**Key Points:**
-- **Models Layer** contains pure domain models (`Session`, `SessionStatus`, `GitStatistics`) with NO UI concerns
-- **ViewModels** live in `ui/presentation/` - they adapt domain models for UI display
-- `startup/` is part of the Service Layer (handles plugin lifecycle and initialization)
-- `listeners/` is part of the Service Layer (coordinates event handling)
-- `settings/` UI is separate from settings data (PluginSettings stored via PersistentStateComponent)
-- All layers can depend on Models, but UI must go through Services for business logic
-- **Mappers** in `ui/presentation/` transform domain models → ViewModels
 
 ## External Dependencies
 
@@ -154,41 +60,6 @@ src/test/kotlin/com/github/tzdel/orchestragentintellij/
 - IntelliJ Platform APIs: Git4Idea, VFS, Project Services, Tool Window Manager, Notification Manager
 
 **Important:** Use Gradle version catalog or dependency management in `build.gradle.kts`; never hardcode versions in imports
-
-## Clean Architecture Pattern
-
-**Flow:** User Interaction → UI Layer → Service Layer → Integration Layer → MCP Server
-
-**Key Points:**
-- **Models Layer (models/)** contains pure domain models with business rules - NO UI/presentation concerns
-- **Service Layer (services/, startup/, listeners/)** manages application state, coordinates integration layer, implements business logic, handles lifecycle
-- **Integration Layer (integration/mcp/, integration/git/)** communicates with external systems (MCP server, Git, file system)
-- **UI Layer (ui/presentation/, ui/toolWindow/, ui/actions/, ui/dialogs/, ui/settings/)**
-  - `ui/presentation/` contains ViewModels and mappers (domain → presentation)
-  - Other UI packages contain visual components that display ViewModels
-- All dependencies point toward models
-- Configuration persisted via IntelliJ's PersistentStateComponent
-
-**Domain Model vs ViewModel Separation:**
-```kotlin
-// models/Session.kt - Pure domain model
-data class Session(
-    val id: String,
-    val worktreePath: Path,
-    val branchName: String,
-    val status: SessionStatus,
-    val statistics: GitStatistics
-)
-
-// ui/presentation/SessionViewModel.kt - Presentation model
-data class SessionViewModel(
-    val displayName: String,           // Formatted for UI
-    val statusColor: Color,            // UI-specific
-    val linesChangedText: String,      // "245 additions, 18 deletions"
-    val canMerge: Boolean,             // UI state
-    val lastModifiedFormatted: String  // "2 hours ago"
-)
-```
 
 ## Key Design Decisions
 
@@ -363,28 +234,31 @@ Always write tests first, before implementing features:
 
 **Base Package:** `com.github.tzdel.orchestragentintellij`
 
-**Models Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/models/` - Pure domain models (Session, SessionStatus, GitStatistics)
+**Top-Level Packages (IntelliJ Conventions - Feature-Focused):**
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/actions/` - IDE actions (create, merge, delete, refresh sessions)
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/toolwindow/` - Tool window factory and panels
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/listeners/` - Event listeners (file system changes)
 
-**Service Layer:**
+**Domain Layer:**
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/domain/model/` - Pure domain models (Session, SessionStatus, GitStatistics)
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/domain/presentation/` - ViewModels and mappers (presentation models)
+
+**Services Layer:**
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/services/` - Application services (state management, business logic)
 - `src/main/kotlin/com/github/tzdel/orchestragentintellij/startup/` - Plugin lifecycle and initialization
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/listeners/` - Event listeners and coordination
 
-**Integration Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/integration/mcp/` - MCP protocol integration
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/integration/git/` - Git operations and integration
+**Infrastructure Layer:**
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/infrastructure/mcp/` - MCP protocol integration
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/infrastructure/git/` - Git operations and integration
 
-**UI Layer:**
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/presentation/` - ViewModels and mappers (presentation models)
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/toolWindow/` - Tool window UI components
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/actions/` - User actions and handlers
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/dialogs/` - User dialogs
-- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/settings/` - Settings UI
+**UI Components:**
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/dialogs/` - User dialogs (create session, merge confirmation)
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/components/` - Reusable UI components
+- `src/main/kotlin/com/github/tzdel/orchestragentintellij/ui/settings/` - Settings UI (plugin configuration)
 
 **Resources & Tests:**
 - `src/main/resources/META-INF/` - Plugin manifest and resources
-- `src/test/kotlin/com/github/tzdel/orchestragentintellij/` - Unit and integration tests
+- `src/test/kotlin/com/github/tzdel/orchestragentintellij/` - Unit and integration tests (70-90% pure Kotlin, 10-30% platform tests)
 
 ## IntelliJ Platform API Reference
 
