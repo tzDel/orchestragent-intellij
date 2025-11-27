@@ -21,8 +21,6 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ### ❌ What's Missing
 
-- Binary availability validation logic
-- Configuration dialog UI for missing MCP binary
 - MCP connection service with state management
 - Session domain models (Session, SessionStatus, GitStatistics)
 - Session management service with MCP integration
@@ -35,48 +33,7 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ## Deliverables
 
-### **Deliverable 1: Binary Validation & Configuration UI**
-
-**Goal:** Plugin detects missing MCP binary and prompts user to configure path
-
-#### Components
-
-1. **BinaryValidator** (Pure Kotlin - unit testable)
-   - `validateBinaryExists(path: String): ValidationResult`
-   - `validateBinaryExecutable(path: String): ValidationResult`
-   - Returns sealed class `ValidationResult` (Success, FileNotFound, NotExecutable)
-
-2. **Configuration Dialog UI**
-   - `ConfigurationDialog` extends `DialogWrapper`
-   - File chooser for MCP binary path selection
-   - Inline validation with "Test Connection" button
-   - Apply/Cancel buttons
-
-3. **ConfigurationService Extensions**
-   - Implement `PersistentStateComponent<ConfigurationState>`
-   - Add `customBinaryPath: String?` property
-   - Add `autoStartEnabled: Boolean` property
-   - Persist settings to IDE's XML storage
-
-4. **Settings UI Integration**
-   - Settings page under Tools > Orchestragent
-   - Form fields: MCP binary path, repository path, auto-start toggle
-   - Path auto-discovery on initial load
-
-#### Testing Strategy
-- **Unit tests:** BinaryValidator (mock file system checks)
-- **Platform tests:** ConfigurationService persistence (use IntelliJ test fixture)
-- **Manual:** Configuration dialog UI (visual verification)
-
-#### Acceptance Criteria
-- [ ] Binary validation detects missing/invalid executable
-- [ ] Configuration dialog opens when binary not found on startup
-- [ ] Settings persist across IDE restarts
-- [ ] Test connection button validates MCP binary handshake
-
----
-
-### **Deliverable 2: Session Domain Layer**
+### **Deliverable 1: Session Domain Layer**
 
 **Goal:** Clean domain models with zero IntelliJ dependencies, fully unit testable
 
@@ -128,7 +85,7 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ---
 
-### **Deliverable 3: MCP Connection Service**
+### **Deliverable 2: MCP Connection Service**
 
 **Goal:** Reliable MCP server connection with resilient retry mechanism
 
@@ -181,7 +138,7 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ---
 
-### **Deliverable 4: Session Management Service**
+### **Deliverable 3: Session Management Service**
 
 **Goal:** Service layer manages session state, syncs with MCP server on-demand
 
@@ -223,7 +180,7 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ---
 
-### **Deliverable 5: Startup Integration**
+### **Deliverable 4: Startup Integration**
 
 **Goal:** Complete plugin initialization workflow on IDE startup
 
@@ -237,7 +194,7 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
        val mcpConnectionService = service<MCPConnectionService>()
        val sessionManagerService = project.service<SessionManagerService>()
 
-       // 1. Check binary availability
+       // 1. Get MCP binary path (bundled or custom)
        // 2. Connect to MCP server (with retry)
        // 3. Initialize session list from server
        // 4. UI already registered via plugin.xml
@@ -245,15 +202,15 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
    ```
 
 2. **Orchestrated Workflow**
-   - Step 1: Binary validation (show config dialog if missing)
+   - Step 1: Get binary path from ConfigurationService (bundled by default)
    - Step 2: MCP connection with retry (non-blocking)
    - Step 3: Session initialization (call refreshSessions)
    - Step 4: Handle failures with notifications
 
 3. **Error Handling**
-   - Binary not found → show configuration dialog
-   - Connection failure → show error notification + retry option
+   - Connection failure → show error notification with retry option
    - Session sync failure → log warning, continue (empty session list)
+   - Note: Custom binary path configuration handled in Settings workflow (#6)
 
 4. **Coroutine-Based Async Init**
    - All operations use `suspend` functions
@@ -267,13 +224,14 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 #### Testing Strategy
 - **Platform tests:** Full startup flow (use BasePlatformTestCase)
-- **Platform tests:** Binary missing scenario (mock ConfigurationService)
 - **Platform tests:** MCP connection failure (mock MCPConnectionService)
+- **Platform tests:** Custom binary path scenario (mock ConfigurationService)
 - **Unit tests:** Error handling logic (isolated)
 
 #### Acceptance Criteria
 - [ ] Startup executes all steps without blocking EDT
-- [ ] Binary validation triggers config dialog
+- [ ] Uses bundled binary by default
+- [ ] Uses custom binary path if configured
 - [ ] MCP connection retry on failure (exponential backoff)
 - [ ] Session list initialized from MCP server
 - [ ] Graceful degradation on failures (no crashes)
@@ -282,7 +240,7 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ---
 
-### **Deliverable 6: Tool Window & Actions Registration**
+### **Deliverable 5: Tool Window & Actions Registration**
 
 **Goal:** Functional tool window displays session list from MCP server
 
@@ -336,19 +294,18 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 
 ## Implementation Phases
 
-### **Phase 1: Foundation** (Deliverables 1-2)
-**Duration:** 2-3 implementation cycles
-- Binary validation & configuration UI
+### **Phase 1: Foundation** (Deliverable 1)
+**Duration:** 1-2 implementation cycles
 - Session domain models
-- **Outcome:** Plugin can validate MCP binary and has domain layer
+- **Outcome:** Clean domain layer with zero IntelliJ dependencies
 
-### **Phase 2: MCP Integration** (Deliverables 3-4)
+### **Phase 2: MCP Integration** (Deliverables 2-3)
 **Duration:** 3-4 implementation cycles
 - MCP connection service with retry
 - Session management service with MCP sync
 - **Outcome:** Plugin connects to MCP server and fetches sessions
 
-### **Phase 3: Startup & UI** (Deliverables 5-6)
+### **Phase 3: Startup & UI** (Deliverables 4-5)
 **Duration:** 2-3 implementation cycles
 - Startup workflow integration
 - Tool window session list UI
@@ -389,24 +346,23 @@ Implementation plan for the **Plugin Initialization** workflow (Workflow #1 from
 ### Dependencies Between Deliverables
 
 ```
-Deliverable 2 (Domain Models)
+Deliverable 1 (Domain Models)
     ↓
-Deliverable 1 (Binary Validation) ← Deliverable 3 (MCP Connection)
-    ↓                                       ↓
-Deliverable 4 (Session Management Service)
+Deliverable 2 (MCP Connection)
     ↓
-Deliverable 5 (Startup Integration)
+Deliverable 3 (Session Management Service)
     ↓
-Deliverable 6 (Tool Window & Actions)
+Deliverable 4 (Startup Integration)
+    ↓
+Deliverable 5 (Tool Window & Actions)
 ```
 
 **Recommended Order:**
-1. Deliverable 2 (domain models - zero dependencies)
-2. Deliverable 1 (binary validation)
-3. Deliverable 3 (MCP connection)
-4. Deliverable 4 (session management)
-5. Deliverable 5 (startup integration)
-6. Deliverable 6 (tool window UI)
+1. Deliverable 1 (domain models - zero dependencies)
+2. Deliverable 2 (MCP connection service)
+3. Deliverable 3 (session management service)
+4. Deliverable 4 (startup integration)
+5. Deliverable 5 (tool window UI)
 
 ---
 
@@ -414,16 +370,16 @@ Deliverable 6 (Tool Window & Actions)
 
 ### Plugin Initialization Complete When:
 
-- [x] MCP binary validated on startup
-- [x] Configuration dialog shown if binary missing
-- [x] MCP server process started successfully
-- [x] Connection established with retry on failure
-- [x] Session list fetched from MCP server
-- [x] Tool window displays session list
-- [x] Refresh action updates session list
-- [x] All tests pass (`./gradlew test`)
-- [x] No EDT blocking during initialization
-- [x] Graceful cleanup on project close
+- [ ] Bundled MCP binary used by default
+- [ ] Custom binary path used if configured (via Settings workflow #6)
+- [ ] MCP server process started successfully
+- [ ] Connection established with retry on failure
+- [ ] Session list fetched from MCP server
+- [ ] Tool window displays session list
+- [ ] Refresh action updates session list
+- [ ] All tests pass (`./gradlew test`)
+- [ ] No EDT blocking during initialization
+- [ ] Graceful cleanup on project close
 
 ---
 
@@ -440,6 +396,8 @@ Deliverable 6 (Tool Window & Actions)
 ## Notes
 
 - This plan covers ONLY the Plugin Initialization workflow (Workflow #1)
+- **Bundled binary approach:** Plugin ships with MCP server binary; custom path configuration is handled in Settings workflow (#6)
+- ConfigurationService already exists with basic bundled binary path logic (services/ConfigurationService.kt:11)
 - Future workflows (Create, View, Merge, Remove, Settings) are separate deliverables
-- Action stubs in Deliverable 6 are placeholders for future workflow implementation
-- MCP server binary bundling strategy already decided (hybrid: bundled + custom path option)
+- Action stubs in Deliverable 5 are placeholders for future workflow implementation
+- Settings UI for custom binary path will be implemented in User Settings Workflow (#6)

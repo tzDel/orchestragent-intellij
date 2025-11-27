@@ -7,15 +7,17 @@ IDE Startup
     │
     ├─→ Plugin loads (Application Service)
     │
-    ├─→ Check MCP server binary availability
-    │   ├─ Found: Start MCP server process (stdio transport)
-    │   └─ Not found: Show configuration dialog
+    ├─→ ConfigurationService: Get MCP binary path
+    │   ├─ Custom path configured: Use custom binary
+    │   └─ No custom path: Use bundled binary (default)
+    │
+    ├─→ Start MCP server process (stdio transport)
     │
     ├─→ Establish MCP connection
     │   ├─ Success: Initialize session list from server
     │   └─ Failure: Retry with exponential backoff
     │
-    └─→ Register tool window and actions
+    └─→ Tool window and actions registered via plugin.xml
 ```
 
 ### 2. Create Session Workflow
