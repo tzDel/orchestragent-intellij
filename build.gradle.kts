@@ -20,15 +20,21 @@ kotlin {
 
 repositories {
     mavenCentral()
-
-    // IntelliJ Platform Gradle Plugin Repositories Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-repositories-extension.html
     intellijPlatform {
         defaultRepositories()
     }
 }
 
 dependencies {
-    implementation(libs.mcpKotlinSdkClientJvm)
+    implementation(libs.mcpKotlinSdkClientJvm) {
+        /*
+        The IntelliJ Platform bundles a patched version of kotlinx-coroutines.
+         We must exclude the standard version brought in by this library to avoid
+         'NoSuchMethodError' crashes due to classpath conflicts.
+        */
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    }
 
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
