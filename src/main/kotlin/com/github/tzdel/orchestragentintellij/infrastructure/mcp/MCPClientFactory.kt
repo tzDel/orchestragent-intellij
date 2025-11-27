@@ -20,9 +20,18 @@ class MCPClientFactory(
     private val processManager: ProcessManager,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val logger: Logger = Logger.getInstance(MCPClientFactory::class.java),
+    private val clientFactory: (Implementation, ClientOptions) -> Client = { clientInfo, clientOptions ->
+        Client(clientInfo, clientOptions)
+    },
+    private val transportFactory: (Process) -> Transport = { process ->
+        StdioClientTransport(
+            process.inputStream.asSource().buffered(),
+            process.outputStream.asSink().buffered(),
+        )
+    },
 ) {
 
-    fun buildClientInfo(
+    private fun buildClientInfo(
         name: String = DEFAULT_CLIENT_NAME,
         version: String = DEFAULT_CLIENT_VERSION,
     ): Implementation = Implementation(name = name, version = version)
@@ -59,12 +68,9 @@ class MCPClientFactory(
     private fun createClient(
         clientInfo: Implementation = buildClientInfo(),
         clientOptions: ClientOptions = ClientOptions(),
-    ): Client = Client(clientInfo, clientOptions)
+    ): Client = clientFactory(clientInfo, clientOptions)
 
-    private fun createTransport(process: Process): Transport = StdioClientTransport(
-        process.inputStream.asSource().buffered(),
-        process.outputStream.asSink().buffered(),
-    )
+    private fun createTransport(process: Process): Transport = transportFactory(process)
 
     private suspend fun safelyCloseTransport(transport: Transport) {
         try {
