@@ -28,6 +28,8 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.mcpKotlinSdkClientJvm)
+
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
 
