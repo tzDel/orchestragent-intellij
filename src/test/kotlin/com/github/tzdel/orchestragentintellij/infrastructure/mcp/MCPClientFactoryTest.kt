@@ -25,6 +25,7 @@ class MCPClientFactoryTest {
 
     @Test
     fun `startAndConnect SHOULD use default client info WHEN none provided`() = runBlocking {
+        // arrange
         val capturedClients = mutableListOf<CapturingClient>()
         val factory = MCPClientFactory(
             processManager = processManager,
@@ -35,23 +36,29 @@ class MCPClientFactoryTest {
             transportFactory = { NoOpTransport() },
         )
 
+        // act
         val connectedClient = factory.startAndConnect(
             binaryPath = getBinaryPath(),
             repositoryPath = System.getProperty("user.dir") ?: ".",
         )
 
+        // assert
         val capturedClient = capturedClients.single()
-        assertEquals("orchestragent-intellij", capturedClient.clientInfo.name)
-        assertEquals("0.1.0", capturedClient.clientInfo.version)
+        val expectedClientName = "orchestragent-intellij"
+        val expectedClientVersion = "0.1.0"
+        assertEquals(expectedClientName, capturedClient.clientInfo.name)
+        assertEquals(expectedClientVersion, capturedClient.clientInfo.version)
 
         connectedClient.process.destroy()
     }
 
     @Test
     fun `startAndConnect SHOULD wrap failures WHEN process start fails`() {
+        // arrange
         val repositoryPath = System.getProperty("user.dir") ?: "."
         val factory = MCPClientFactory(processManager)
 
+        // act
         val exception = assertThrows<MCPClientInitializationException> {
             runBlocking {
                 factory.startAndConnect(
@@ -61,6 +68,7 @@ class MCPClientFactoryTest {
             }
         }
 
+        // assert
         val causeChain = generateSequence(exception as Throwable?) { it.cause }
         assertTrue(
             causeChain.any { it is ProcessStartException },
@@ -79,21 +87,16 @@ class MCPClientFactoryTest {
         clientOptions: ClientOptions,
     ) : Client(clientInfo, clientOptions) {
         override suspend fun connect(transport: Transport) {
-            // no-op to avoid real handshake during tests
+            // No-op: avoid real handshake during tests
         }
     }
 
     private class NoOpTransport : Transport {
         override suspend fun start() = Unit
-
         override suspend fun send(message: JSONRPCMessage, options: TransportSendOptions?) = Unit
-
         override suspend fun close() = Unit
-
         override fun onClose(block: () -> Unit) = Unit
-
         override fun onError(block: (Throwable) -> Unit) = Unit
-
         override fun onMessage(block: suspend (JSONRPCMessage) -> Unit) = Unit
     }
 }

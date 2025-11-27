@@ -16,19 +16,18 @@ import kotlinx.io.buffered
 private const val DEFAULT_CLIENT_NAME = "orchestragent-intellij"
 private const val DEFAULT_CLIENT_VERSION = "0.1.0"
 
+private fun createStdioTransport(process: Process): Transport =
+    StdioClientTransport(
+        process.inputStream.asSource().buffered(),
+        process.outputStream.asSink().buffered(),
+    )
+
 class MCPClientFactory(
     private val processManager: ProcessManager,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val logger: Logger = Logger.getInstance(MCPClientFactory::class.java),
-    private val clientFactory: (Implementation, ClientOptions) -> Client = { clientInfo, clientOptions ->
-        Client(clientInfo, clientOptions)
-    },
-    private val transportFactory: (Process) -> Transport = { process ->
-        StdioClientTransport(
-            process.inputStream.asSource().buffered(),
-            process.outputStream.asSink().buffered(),
-        )
-    },
+    private val clientFactory: (Implementation, ClientOptions) -> Client = ::Client,
+    private val transportFactory: (Process) -> Transport = ::createStdioTransport,
 ) {
 
     private fun buildClientInfo(
