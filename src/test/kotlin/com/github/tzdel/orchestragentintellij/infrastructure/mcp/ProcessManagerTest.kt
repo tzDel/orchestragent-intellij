@@ -1,14 +1,15 @@
 package com.github.tzdel.orchestragentintellij.infrastructure.mcp
 
-import org.junit.After
-import org.junit.Test
-import org.junit.Assert.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class ProcessManagerTest {
 
     private val processManager = ProcessManager()
 
-    @After
+    @AfterEach
     fun cleanup() {
         processManager.stopProcess()
     }
@@ -24,7 +25,7 @@ class ProcessManagerTest {
         val process = processManager.startProcess(binaryPath, repositoryPath)
 
         // assert
-        assertTrue("Process should be alive after starting", process.isAlive)
+        assertTrue(process.isAlive, "Process should be alive after starting")
 
         // cleanup
         process.destroy()
@@ -37,7 +38,7 @@ class ProcessManagerTest {
         val repositoryPath = System.getProperty("user.dir")
 
         // act & assert
-        assertThrows(ProcessStartException::class.java) {
+        assertThrows<ProcessStartException> {
             processManager.startProcess(invalidBinaryPath, repositoryPath)
         }
     }
@@ -54,7 +55,7 @@ class ProcessManagerTest {
 
         // assert
         val expectedIsAlive = true
-        assertEquals("Process should be alive", expectedIsAlive, isAlive)
+        assertEquals(expectedIsAlive, isAlive, "Process should be alive")
     }
 
     @Test
@@ -71,7 +72,7 @@ class ProcessManagerTest {
 
         // assert
         val expectedIsAlive = false
-        assertEquals("Process should not be alive after termination", expectedIsAlive, isAlive)
+        assertEquals(expectedIsAlive, isAlive, "Process should not be alive after termination")
     }
 
     @Test
@@ -87,7 +88,7 @@ class ProcessManagerTest {
         // assert
         val expectedIsAlive = false
         val actualIsAlive = processManager.isProcessAlive()
-        assertEquals("Process should be terminated after stopProcess()", expectedIsAlive, actualIsAlive)
+        assertEquals(expectedIsAlive, actualIsAlive, "Process should be terminated after stopProcess()")
     }
 
     @Test
@@ -101,7 +102,7 @@ class ProcessManagerTest {
         val outputStream = processManager.getOutputStream()
 
         // assert
-        assertNotNull("Output stream should not be null when process is running", outputStream)
+        assertNotNull(outputStream, "Output stream should not be null when process is running")
     }
 
     @Test
@@ -115,7 +116,7 @@ class ProcessManagerTest {
         val errorStream = processManager.getErrorStream()
 
         // assert
-        assertNotNull("Error stream should not be null when process is running", errorStream)
+        assertNotNull(errorStream, "Error stream should not be null when process is running")
     }
 
     private fun getBinaryPath(): String = if (System.getProperty("os.name").lowercase().contains("windows")) {

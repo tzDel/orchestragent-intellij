@@ -5,6 +5,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import org.junit.jupiter.api.Assertions.assertNotNull
 
 class NotificationServiceTest : BasePlatformTestCase() {
 
@@ -25,7 +26,7 @@ class NotificationServiceTest : BasePlatformTestCase() {
         notificationService.notifySuccess(expectedTitle, expectedMessage)
 
         // assert
-        assertNotNull("Notification should be sent", capture.captured)
+        assertNotNull(capture.captured, "Notification should be sent", )
         assertEquals(expectedTitle, capture.captured?.title)
         assertEquals(expectedMessage, capture.captured?.content)
         assertEquals(NotificationType.INFORMATION, capture.captured?.type)

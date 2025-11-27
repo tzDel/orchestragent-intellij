@@ -36,8 +36,11 @@ dependencies {
         exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
     }
 
-    testImplementation(libs.junit)
-    testImplementation(libs.opentest4j)
+    testImplementation(libs.bundles.junit)
+    testImplementation(libs.junit4)  // Required for platform test base classes
+    testImplementation(libs.junit.vintage.engine)
+
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
     intellijPlatform {
@@ -134,6 +137,10 @@ kover {
 tasks {
     wrapper {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
+    }
+
+    test {
+        useJUnitPlatform()
     }
 
     publishPlugin {

@@ -8,17 +8,17 @@ import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.JSONRPCMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class MCPClientFactoryTest {
 
     private val processManager = ProcessManager()
 
-    @After
+    @AfterEach
     fun cleanup() {
         processManager.stopProcess()
     }
@@ -52,7 +52,7 @@ class MCPClientFactoryTest {
         val repositoryPath = System.getProperty("user.dir") ?: "."
         val factory = MCPClientFactory(processManager)
 
-        val exception = assertThrows(MCPClientInitializationException::class.java) {
+        val exception = assertThrows<MCPClientInitializationException> {
             runBlocking {
                 factory.startAndConnect(
                     binaryPath = "nonexistent-mcp-binary",
@@ -63,8 +63,8 @@ class MCPClientFactoryTest {
 
         val causeChain = generateSequence(exception as Throwable?) { it.cause }
         assertTrue(
+            causeChain.any { it is ProcessStartException },
             "Expected ProcessStartException anywhere in cause chain but found ${exception.cause?.javaClass?.name}",
-            causeChain.any { it is ProcessStartException }
         )
     }
 
